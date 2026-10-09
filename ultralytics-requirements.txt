@@ -19,7 +19,7 @@ dill
 easydict
 swanlab
 albumentationsx==2.0.16
-setuptools==80.10.2
+setuptools==84.0.0
 
 # ------------------ 装不成功可以先注释这两个(只有极少部分改进依赖这两个包)
 # mmengine==0.10.7
