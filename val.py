@@ -16,6 +16,50 @@ from ultralytics.utils import LOGGER
 
 RED, GREEN, BLUE, YELLOW, ORANGE, CYAN, MAGENTA, BOLD, RESET = "\033[91m", "\033[92m", "\033[94m", "\033[93m", "\033[38;5;208m", "\033[96m", "\033[95m", "\033[1m", "\033[0m"
 
+# 实验记录表路径，每次 val 完成后自动追加一行整体指标
+EXP_RECORD_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'exp.csv')
+
+
+def record_experiment(result, model, model_path, imgsz):
+    """把本次验证的整体指标追加记录到实验记录表 exp.csv，Model 列取权重文件名，重名自动加 -2、-3 后缀"""
+    import csv
+
+    length = result.box.p.size
+    n_l, n_p, n_g, flops = model_info(model.model, imgsz=imgsz)
+    row = {
+        'P(%)': f"{result.results_dict['metrics/precision(B)'] * 100:.2f}",
+        'R(%)': f"{result.results_dict['metrics/recall(B)'] * 100:.2f}",
+        'F1': f"{np.mean(result.box.f1[:length]) * 100:.2f}",
+        'map50(%)': f"{result.results_dict['metrics/mAP50(B)'] * 100:.2f}",
+        'map50-95(%)': f"{result.results_dict['metrics/mAP50-95(B)'] * 100:.2f}",
+        'GFLOPs': f"{flops:.1f}",
+        'Params(M)': f"{n_p / 1e6:.3f}".rstrip('0').rstrip('.'),
+        'FPS(f/s)': f"{1000 / result.speed['inference']:.2f}",
+    }
+    fieldnames = ['Model', 'P(%)', 'R(%)', 'F1', 'map50(%)', 'map50-95(%)', 'GFLOPs', 'Params(M)', 'FPS(f/s)']
+
+    existed_rows = []
+    if os.path.exists(EXP_RECORD_PATH):
+        with open(EXP_RECORD_PATH, 'r', newline='', encoding='utf-8') as f:
+            existed_rows = list(csv.DictReader(f))
+    existed_names = {r['Model'] for r in existed_rows}
+
+    model_name = os.path.splitext(os.path.basename(model_path))[0]
+    exp_name = model_name
+    suffix = 2
+    while exp_name in existed_names:
+        exp_name = f'{model_name}-{suffix}'
+        suffix += 1
+
+    write_header = not os.path.exists(EXP_RECORD_PATH)
+    with open(EXP_RECORD_PATH, 'a', newline='', encoding='utf-8') as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        if write_header:
+            writer.writeheader()
+        writer.writerow({'Model': exp_name, **row})
+
+    LOGGER.info(f'{BOLD}{ORANGE}{"-"*20}实验记录已追加至 {EXP_RECORD_PATH}（{exp_name}）{"-"*20}{RESET}')
+
 def get_weight_size(path):
     stats = os.stat(path)
     return f'{stats.st_size / 1024 / 1024:.1f}'
@@ -62,12 +106,12 @@ def print_highlight_table(table, header_color_value_cols=None, color_first_col=T
 
 if __name__ == '__main__':
     # 选择训练好的权重路径
-    model_path = 'yolo26n.pt'
+    model_path = r'D:\A92\Ultralytics_2269237804\runs\detect\train\exp4\weights\best.pt'
     # 设置用于计算指标的图像尺寸
     imgsz = 640
 
     model = YOLO(model_path) 
-    result = model.val(data='/root/dataset/dataset_visdrone/data.yaml',
+    result = model.val(data=r'D:\A92\Ultralytics_2269237804\dataset\hahahha\test\images',
                         split='test', # split可以选择train、val、test 根据自己的数据集情况来选择.
                         imgsz=imgsz,
                         batch=16,
@@ -361,6 +405,8 @@ if __name__ == '__main__':
         if coco_metrics_table is not None:
             f.write('\n')
             f.write(str(coco_metrics_table))
-    
+
+    record_experiment(result, model, model_path, imgsz)
+
     for _ in range(5):
         LOGGER.info(f'{BOLD}{ORANGE}{"-"*20}结果已保存至 {result.save_dir}/paper_data.txt...{"-"*20}{RESET}')
