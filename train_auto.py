@@ -50,11 +50,18 @@ class AutoTrainConfig:
 
 AUTO_TRAIN_CONFIG = AutoTrainConfig(
     models=[
-        # "ultralytics/cfg/models/26/yolo26n.yaml",
+        "ultralytics/cfg/models/11/yolo11n.yaml",
+        "ultralytics/cfg/models/26/yolo26n.yaml",
+        'ultralytics/cfg/models/improve/neck/yolo11/yolo11-BiFPN.yaml',
+        'ultralytics/cfg/models/improve/featurefusion/yolo11/yolo11-CGAFusion.yaml',
+        'ultralytics/cfg/models/improve/head/P2head/yolo11/yolo11-P2.yaml',
+        'ultralytics/cfg/models/improve/upsample/yolo11/yolo11-DySample.yaml',
+        'ultralytics/cfg/models/improve/csp-block/2026/yolo11-csp-PKIBlockV2.yaml',
+        'ultralytics/cfg/models/improve/csp-block/myself/yolo11-csp-EFCM.yaml',
     ],
     data="/root/dataset/dataset_visdrone/data.yaml",
     epochs=300,
-    batch=16,
+    batch=64,
     imgsz=640,
     device="0",
     project="train_auto",
