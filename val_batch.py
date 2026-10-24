@@ -9,8 +9,12 @@ from val import run_val
 ROOT = r'/media/dell/Data1/cheng/zhangxuan/zyf/Ultralytics/runs/detect/train_auto'
 
 if __name__ == '__main__':
-    # 设置用于计算指标的图像尺寸
+    # 核心验证参数
+    data = r'D:\A92\Ultralytics\dataset\dataset721\data.yaml' # 数据集配置路径
+    split = 'test' # split可以选择train、val、test 根据自己的数据集情况来选择.
+    batch = 64
     imgsz = 640
+    project = 'batch_val' # 验证结果保存的根目录名称
 
     model_paths = []
     for exp_name in sorted(os.listdir(ROOT)):
@@ -24,6 +28,6 @@ if __name__ == '__main__':
     for idx, model_path in enumerate(model_paths, 1):
         print(f'\n{"="*30} [{idx}/{len(model_paths)}] {model_path} {"="*30}\n')
         try:
-            run_val(model_path, imgsz)
+            run_val(model_path, imgsz=imgsz, data=data, split=split, batch=batch, project=project)
         except Exception as e:
             print(f'[跳过] {model_path} 验证失败: {e}')

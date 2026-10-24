@@ -45,7 +45,7 @@ def record_experiment(result, model, model_path, imgsz):
             existed_rows = list(csv.DictReader(f))
     existed_names = {r['Model'] for r in existed_rows}
 
-    model_name = os.path.basename(os.path.dirname(os.path.dirname(model_path)))  # 取 weights 文件夹的父目录名，如 yolo26n
+    model_name = get_exp_name(model_path)  # 取 weights 文件夹的父目录名，如 yolo26n
     exp_name = model_name
     suffix = 2
     while exp_name in existed_names:
@@ -60,6 +60,11 @@ def record_experiment(result, model, model_path, imgsz):
         writer.writerow({'Model': exp_name, **row})
 
     LOGGER.info(f'{BOLD}{ORANGE}{"-"*20}实验记录已追加至 {EXP_RECORD_PATH}（{exp_name}）{"-"*20}{RESET}')
+
+def get_exp_name(path):
+    """取权重路径中 weights 文件夹的父目录名，如 .../yolo26n/weights/best.pt -> yolo26n"""
+    return os.path.basename(os.path.dirname(os.path.dirname(path)))
+
 
 def get_weight_size(path):
     stats = os.stat(path)
@@ -107,7 +112,10 @@ def print_highlight_table(table, header_color_value_cols=None, color_first_col=T
 
 def run_val(model_path, imgsz=640):
     """对单个权重文件执行验证，打印指标表格、保存 paper_data.txt 并追加 exp.csv"""
-    model = YOLO(model_path) 
+    model = YOLO(model_path)
+
+    exp_name = get_exp_name(model_path) # 验证结果目录名取 weights 文件夹的父目录名，如 yolo26n
+
     result = model.val(data=r'D:\A92\Ultralytics\dataset\dataset721\data.yaml',
                         split='test', # split可以选择train、val、test 根据自己的数据集情况来选择.
                         imgsz=imgsz,
@@ -118,7 +126,7 @@ def run_val(model_path, imgsz=640):
                         # iou=0.7,
                         # save_json=True,
                         project='val',
-                        name='exp',
+                        name=exp_name,
                         device=os.environ.get("CUDA_VISIBLE_DEVICES", 0), # 训练设备选择，不在这里设置，在头部设置，详细可以看UserGuide.md中的常见问题第4点
                         # end2end=False # 如果训练的是NMSFree类型的模型，不想用一对一的头可以设置False
                         )
