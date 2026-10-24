@@ -31,12 +31,13 @@ def record_experiment(result, model, model_path, imgsz):
         'R(%)': f"{result.results_dict['metrics/recall(B)'] * 100:.2f}",
         'F1': f"{np.mean(result.box.f1[:length]) * 100:.2f}",
         'map50(%)': f"{result.results_dict['metrics/mAP50(B)'] * 100:.2f}",
+        'map75(%)': f"{np.mean(result.box.all_ap[:length, 5]) * 100:.2f}",
         'map50-95(%)': f"{result.results_dict['metrics/mAP50-95(B)'] * 100:.2f}",
         'GFLOPs': f"{flops:.1f}",
         'Params(M)': f"{n_p / 1e6:.3f}".rstrip('0').rstrip('.'),
         'FPS(f/s)': f"{1000 / result.speed['inference']:.2f}",
     }
-    fieldnames = ['Model', 'P(%)', 'R(%)', 'F1', 'map50(%)', 'map50-95(%)', 'GFLOPs', 'Params(M)', 'FPS(f/s)']
+    fieldnames = ['Model', 'P(%)', 'R(%)', 'F1', 'map50(%)', 'map75(%)', 'map50-95(%)', 'GFLOPs', 'Params(M)', 'FPS(f/s)']
 
     existed_rows = []
     if os.path.exists(EXP_RECORD_PATH):
@@ -44,7 +45,7 @@ def record_experiment(result, model, model_path, imgsz):
             existed_rows = list(csv.DictReader(f))
     existed_names = {r['Model'] for r in existed_rows}
 
-    model_name = os.path.splitext(os.path.basename(model_path))[0]
+    model_name = os.path.basename(os.path.dirname(os.path.dirname(model_path)))  # 取 weights 文件夹的父目录名，如 yolo26n
     exp_name = model_name
     suffix = 2
     while exp_name in existed_names:
@@ -104,13 +105,8 @@ def print_highlight_table(table, header_color_value_cols=None, color_first_col=T
 
     print(highlighted)
 
-if __name__ == '__main__':
-    # 选择训练好的权重路径
-    model_path = r'D:\A92\Ultralytics\runs\detect\exp2\weights\best.pt'
-    # 设置用于计算指标的图像尺寸
-    imgsz = 640
-
-
+def run_val(model_path, imgsz=640):
+    """对单个权重文件执行验证，打印指标表格、保存 paper_data.txt 并追加 exp.csv"""
     model = YOLO(model_path) 
     result = model.val(data=r'D:\A92\Ultralytics\dataset\dataset721\data.yaml',
                         split='test', # split可以选择train、val、test 根据自己的数据集情况来选择.
@@ -413,3 +409,11 @@ if __name__ == '__main__':
 
     for _ in range(5):
         LOGGER.info(f'{BOLD}{ORANGE}{"-"*20}结果已保存至 {result.save_dir}/paper_data.txt...{"-"*20}{RESET}')
+
+if __name__ == '__main__':
+    # 选择训练好的权重路径
+    model_path = r'D:\A92\Ultralytics\runs\detect\exp2\weights\best.pt'
+    # 设置用于计算指标的图像尺寸
+    imgsz = 640
+
+    run_val(model_path, imgsz)
