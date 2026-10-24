@@ -16,16 +16,16 @@ from ultralytics.utils import LOGGER
 
 RED, GREEN, BLUE, YELLOW, ORANGE, CYAN, MAGENTA, BOLD, RESET = "\033[91m", "\033[92m", "\033[94m", "\033[93m", "\033[38;5;208m", "\033[96m", "\033[95m", "\033[1m", "\033[0m"
 
-# 实验记录表路径，每次 val 完成后自动追加一行整体指标
-EXP_RECORD_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'exp.csv')
+# 实验记录表路径（Markdown 表格），每次 val 完成后自动追加一行整体指标
+EXP_RECORD_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'val_result.md')
 
 
 def record_experiment(result, model, model_path, imgsz):
-    """把本次验证的整体指标追加记录到实验记录表 exp.csv，Model 列取 weights 文件夹的父目录名，重名自动加 -2、-3 后缀"""
-    import csv
+    """把本次验证的整体指标追加记录到实验记录表 val_result.md 的 Markdown 表格，Model 列取 weights 文件夹的父目录名，重名自动加 -2、-3 后缀"""
 
     length = result.box.p.size
     n_l, n_p, n_g, flops = model_info(model.model, imgsz=imgsz)
+    fieldnames = ['Model', 'P(%)', 'R(%)', 'F1', 'map50(%)', 'map75(%)', 'map50-95(%)', 'GFLOPs', 'Params(M)', 'FPS(f/s)']
     row = {
         'P(%)': f"{result.results_dict['metrics/precision(B)'] * 100:.2f}",
         'R(%)': f"{result.results_dict['metrics/recall(B)'] * 100:.2f}",
@@ -37,13 +37,17 @@ def record_experiment(result, model, model_path, imgsz):
         'Params(M)': f"{n_p / 1e6:.3f}".rstrip('0').rstrip('.'),
         'FPS(f/s)': f"{1000 / result.speed['inference']:.2f}",
     }
-    fieldnames = ['Model', 'P(%)', 'R(%)', 'F1', 'map50(%)', 'map75(%)', 'map50-95(%)', 'GFLOPs', 'Params(M)', 'FPS(f/s)']
 
-    existed_rows = []
+    # 读取已有记录的 Model 列，重名自动加 -2、-3 后缀
+    existed_names = set()
     if os.path.exists(EXP_RECORD_PATH):
-        with open(EXP_RECORD_PATH, 'r', newline='', encoding='utf-8') as f:
-            existed_rows = list(csv.DictReader(f))
-    existed_names = {r['Model'] for r in existed_rows}
+        with open(EXP_RECORD_PATH, 'r', encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                if line.startswith('|') and '---' not in line:
+                    first_cell = line.strip('|').split('|')[0].strip()
+                    if first_cell and first_cell != 'Model':
+                        existed_names.add(first_cell)
 
     model_name = get_exp_name(model_path)  # 取 weights 文件夹的父目录名，如 yolo26n
     exp_name = model_name
@@ -53,11 +57,12 @@ def record_experiment(result, model, model_path, imgsz):
         suffix += 1
 
     write_header = not os.path.exists(EXP_RECORD_PATH)
-    with open(EXP_RECORD_PATH, 'a', newline='', encoding='utf-8') as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
+    with open(EXP_RECORD_PATH, 'a', encoding='utf-8') as f:
         if write_header:
-            writer.writeheader()
-        writer.writerow({'Model': exp_name, **row})
+            f.write('# 实验记录\n\n')
+            f.write('| ' + ' | '.join(fieldnames) + ' |\n')
+            f.write('|' + '|'.join([' --- '] * len(fieldnames)) + '|\n')
+        f.write('| ' + ' | '.join([exp_name] + [row[k] for k in fieldnames[1:]]) + ' |\n')
 
     LOGGER.info(f'{BOLD}{ORANGE}{"-"*20}实验记录已追加至 {EXP_RECORD_PATH}（{exp_name}）{"-"*20}{RESET}')
 
