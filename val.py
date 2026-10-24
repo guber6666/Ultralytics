@@ -21,7 +21,7 @@ EXP_RECORD_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'exp.
 
 
 def record_experiment(result, model, model_path, imgsz):
-    """把本次验证的整体指标追加记录到实验记录表 exp.csv，Model 列取权重文件名，重名自动加 -2、-3 后缀"""
+    """把本次验证的整体指标追加记录到实验记录表 exp.csv，Model 列取 weights 文件夹的父目录名，重名自动加 -2、-3 后缀"""
     import csv
 
     length = result.box.p.size
@@ -110,22 +110,24 @@ def print_highlight_table(table, header_color_value_cols=None, color_first_col=T
 
     print(highlighted)
 
-def run_val(model_path, imgsz=640):
+def run_val(model_path, imgsz=640,
+            data=r'D:\A92\Ultralytics\dataset\dataset721\data.yaml',
+            split='test', batch=16, project='val'):
     """对单个权重文件执行验证，打印指标表格、保存 paper_data.txt 并追加 exp.csv"""
     model = YOLO(model_path)
 
     exp_name = get_exp_name(model_path) # 验证结果目录名取 weights 文件夹的父目录名，如 yolo26n
 
-    result = model.val(data=r'D:\A92\Ultralytics\dataset\dataset721\data.yaml',
-                        split='test', # split可以选择train、val、test 根据自己的数据集情况来选择.
+    result = model.val(data=data,
+                        split=split, # split可以选择train、val、test 根据自己的数据集情况来选择.
                         imgsz=imgsz,
-                        batch=16,
+                        batch=batch,
                         workers=4,
                         rect=False, # 验证时统一固定imgsz x imgsz 做 letterbox，避免一些改进在验证的时候会报尺寸问题
                         auto_coco_eval=True, # 一步到位计算COCO指标
                         # iou=0.7,
                         # save_json=True,
-                        project='val',
+                        project=project,
                         name=exp_name,
                         device=os.environ.get("CUDA_VISIBLE_DEVICES", 0), # 训练设备选择，不在这里设置，在头部设置，详细可以看UserGuide.md中的常见问题第4点
                         # end2end=False # 如果训练的是NMSFree类型的模型，不想用一对一的头可以设置False
