@@ -106,15 +106,17 @@ def print_highlight_table(table, header_color_value_cols=None, color_first_col=T
 
 if __name__ == '__main__':
     # 选择训练好的权重路径
-    model_path = r'D:\A92\Ultralytics_2269237804\runs\detect\train\exp4\weights\best.pt'
+    model_path = r'D:\A92\Ultralytics\runs\detect\exp2\weights\best.pt'
     # 设置用于计算指标的图像尺寸
     imgsz = 640
 
+
     model = YOLO(model_path) 
-    result = model.val(data=r'D:\A92\Ultralytics_2269237804\dataset\hahahha\test\images',
+    result = model.val(data=r'D:\A92\Ultralytics\dataset\dataset721\data.yaml',
                         split='test', # split可以选择train、val、test 根据自己的数据集情况来选择.
                         imgsz=imgsz,
                         batch=16,
+                        workers=4,
                         rect=False, # 验证时统一固定imgsz x imgsz 做 letterbox，避免一些改进在验证的时候会报尺寸问题
                         auto_coco_eval=True, # 一步到位计算COCO指标
                         # iou=0.7,
@@ -399,6 +401,7 @@ if __name__ == '__main__':
             LOGGER.warning("当前任务未返回 COCO per-class 指标，跳过 COCO 表格输出。")
 
     with open(result.save_dir / 'paper_data.txt', 'w+', errors="ignore", encoding="utf-8") as f:
+        f.write(f"model_path ='{model_path}'\n")
         f.write(str(model_info_table))
         f.write('\n')
         f.write(str(yolo_metrics_table))
