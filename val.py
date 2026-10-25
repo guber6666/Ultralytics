@@ -25,7 +25,7 @@ def record_experiment(result, model, model_path, imgsz):
 
     length = result.box.p.size
     n_l, n_p, n_g, flops = model_info(model.model, imgsz=imgsz)
-    fieldnames = ['Model', 'P(%)', 'R(%)', 'F1', 'map50(%)', 'map75(%)', 'map50-95(%)', 'GFLOPs', 'Params(M)', 'FPS(f/s)']
+    fieldnames = ['Model', 'P(%)', 'R(%)', 'F1', 'map50(%)', 'map75(%)', 'map50-95(%)', 'GFLOPs', 'Params(M)', 'FPS(f/s)', 'Model File Size(MB)']
     row = {
         'P(%)': f"{result.results_dict['metrics/precision(B)'] * 100:.2f}",
         'R(%)': f"{result.results_dict['metrics/recall(B)'] * 100:.2f}",
@@ -36,6 +36,7 @@ def record_experiment(result, model, model_path, imgsz):
         'GFLOPs': f"{flops:.1f}",
         'Params(M)': f"{n_p / 1e6:.3f}".rstrip('0').rstrip('.'),
         'FPS(f/s)': f"{1000 / result.speed['inference']:.2f}",
+        'Model File Size(MB)': get_weight_size(model_path),
     }
 
     # 读取已有记录的 Model 列，重名自动加 -2、-3 后缀
@@ -118,7 +119,7 @@ def print_highlight_table(table, header_color_value_cols=None, color_first_col=T
 def run_val(model_path, imgsz=640,
             data=r'D:\A92\Ultralytics\dataset\dataset721\data.yaml',
             split='test', batch=16, project='val'):
-    """对单个权重文件执行验证，打印指标表格、保存 paper_data.txt 并追加 exp.csv"""
+    """对单个权重文件执行验证，打印指标表格、保存 paper_data.txt 并追加 val_result.md"""
     model = YOLO(model_path)
 
     exp_name = get_exp_name(model_path) # 验证结果目录名取 weights 文件夹的父目录名，如 yolo26n
@@ -206,15 +207,15 @@ def run_val(model_path, imgsz=640,
                                     "all(平均数据)", 
                                     f"{result.results_dict['metrics/precision(B)']:.4f}", 
                                     f"{result.results_dict['metrics/recall(B)']:.4f}", 
-                                    f"{np.mean(result.box.f1[:length]):.4f}", 
-                                    f"{result.results_dict['metrics/mAP50(B)']:.4f}", 
-                                    f"{np.mean(result.box.all_ap[:length, 5]):.4f}", # 50 55 60 65 70 75 80 85 90 95 
+                                    f"{np.mean(result.box.f1[:length]):.4f}",
+                                    f"{result.results_dict['metrics/mAP50(B)']:.4f}",
+                                    f"{np.mean(result.box.all_ap[:length, 5]):.4f}", # 50 55 60 65 70 75 80 85 90 95
                                     f"{result.results_dict['metrics/mAP50-95(B)']:.4f}",
-                                    f"{result.results_dict['metrics/precision(M)']:.4f}", 
-                                    f"{result.results_dict['metrics/recall(M)']:.4f}", 
-                                    f"{np.mean(result.box.f1[:length]):.4f}", 
-                                    f"{result.results_dict['metrics/mAP50(M)']:.4f}", 
-                                    f"{np.mean(result.box.all_ap[:length, 5]):.4f}", # 50 55 60 65 70 75 80 85 90 95 
+                                    f"{result.results_dict['metrics/precision(M)']:.4f}",
+                                    f"{result.results_dict['metrics/recall(M)']:.4f}",
+                                    f"{np.mean(result.seg.f1[:length]):.4f}",
+                                    f"{result.results_dict['metrics/mAP50(M)']:.4f}",
+                                    f"{np.mean(result.seg.all_ap[:length, 5]):.4f}", # 50 55 60 65 70 75 80 85 90 95
                                     f"{result.results_dict['metrics/mAP50-95(M)']:.4f}"
                                 ])
     elif model.task == 'pose':
@@ -244,11 +245,11 @@ def run_val(model_path, imgsz=640,
                                     f"{result.results_dict['metrics/mAP50(B)']:.4f}", 
                                     f"{np.mean(result.box.all_ap[:length, 5]):.4f}", # 50 55 60 65 70 75 80 85 90 95 
                                     f"{result.results_dict['metrics/mAP50-95(B)']:.4f}",
-                                    f"{result.results_dict['metrics/precision(P)']:.4f}", 
-                                    f"{result.results_dict['metrics/recall(P)']:.4f}", 
-                                    f"{np.mean(result.box.f1[:length]):.4f}", 
-                                    f"{result.results_dict['metrics/mAP50(P)']:.4f}", 
-                                    f"{np.mean(result.box.all_ap[:length, 5]):.4f}", # 50 55 60 65 70 75 80 85 90 95 
+                                    f"{result.results_dict['metrics/precision(P)']:.4f}",
+                                    f"{result.results_dict['metrics/recall(P)']:.4f}",
+                                    f"{np.mean(result.pose.f1[:length]):.4f}",
+                                    f"{result.results_dict['metrics/mAP50(P)']:.4f}",
+                                    f"{np.mean(result.pose.all_ap[:length, 5]):.4f}", # 50 55 60 65 70 75 80 85 90 95
                                     f"{result.results_dict['metrics/mAP50-95(P)']:.4f}"
                                 ])
 
@@ -427,8 +428,14 @@ def run_val(model_path, imgsz=640,
 
 if __name__ == '__main__':
     # 选择训练好的权重路径
-    model_path = r'D:\A92\Ultralytics\runs\detect\exp2\weights\best.pt'
-    # 设置用于计算指标的图像尺寸
-    imgsz = 640
+    model_path = '/media/dell/Data1/cheng/zhangxuan/zyf/Ultralytics/runs/detect/train/exp6/weights/best.pt'
+    imgsz = 640 # 设置用于计算指标的图像尺寸
+    data = '/media/dell/Data1/cheng/zhangxuan/zyf/dataV2/class23im/data.yaml'# 数据集配置文件路径
+    # 验证集划分，可选 train、val、test
+    split = 'test'
+    # 验证结果保存的项目目录
+    project = 'class23im_val'
+    # 验证时的 batch size
+    batch = 64
 
-    run_val(model_path, imgsz)
+    run_val(model_path, imgsz, data=data, split=split, project=project, batch=batch)
